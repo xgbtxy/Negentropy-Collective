@@ -1,32 +1,61 @@
-# 🌌 Burp-Negentropy (渗透测试负熵组件)
+# 🌌 Burp-Negentropy (负熵集合)
 
 > **熵增是自然的趋势，而智能需要秩序。**
+> **Entropy increases naturally; Intelligence requires order.**
 
-![Burp Suite](https://img.shields.io/badge/Burp%20Suite-Extension-orange?style=flat-square) ![Java](https://img.shields.io/badge/Language-Java%208%2B-blue?style=flat-square) ![Concept](https://img.shields.io/badge/Concept-Negentropy-purple?style=flat-square)
+![Structure](https://img.shields.io/badge/Structure-Dual%20Pillars-blue?style=flat-square) ![Focus](https://img.shields.io/badge/Focus-Tools%20%26%20Methodology-purple?style=flat-square) ![Status](https://img.shields.io/badge/Status-Active-green?style=flat-square)
 
-[**🇺🇸 English Documentation**](README.md)
-
----
-
-## 📖 项目哲学 (Philosophy)
-
-**“未来不在于工具本身，而在于流转。”**
-
-在现代渗透测试的图景中，我们正淹没在**“数据熵”**之中——海量的日志、冗余的静态资源、无序的参数交互。
-
-随着 AI (LLM) 介入安全领域，我们发现最大的瓶颈不再是 AI 的推理能力，而是**数据的质量**。如果我们直接把 Burp 中混乱的原始流量（Raw Traffic）丢给 AI，这不仅是 Token 的浪费，更是对智能的干扰。
-
-**Negentropy (负熵)** 不仅仅是一个复制插件，它是**下一代自动化渗透测试流水线中的“信号处理单元”**。它的使命是充当工作流中的“麦克斯韦妖”：从**混沌 (Chaos)** 中提取 **秩序 (Order)**。
+[**🇺🇸 English Manifesto**](README.md)
 
 ---
 
-## 🧩 生态定位 (Ecosystem)
+## 📖 核心宣言 (Manifesto)
 
-本组件在自动化渗透测试流水线中，充当 **数据预处理层** 的角色：
+**这不是一个单一工具的仓库，而是渗透测试过程中“负熵 (Negentropy)”实现的集合地。**
 
-```mermaid
-graph LR
-    A[🌊 原始流量 / 混沌] -->|高熵| B(Burp Suite)
-    B --> C{🌌 Negentropy 负熵组件}
-    C -->|过滤与清洗| D[💎 结构化上下文 / 有序]
-    D -->|输入| E[🧠 LLM / AI 大脑]
+在网络安全对抗中，我们面对的最大挑战是**混乱 (Chaos)**——海量的流量、冗余的日志、复杂的攻击面。本仓库致力于构建一套完整的**熵减体系**，将混乱转化为有序的智能。
+
+我们将这套体系分为两个核心支柱：
+
+### 🛠️ 支柱一：工具论 (Tools)
+> **"工欲善其事" - The Tangible Implementations.**
+> 具体的代码、插件与脚本。它们是执行熵减操作的物理手段，负责数据的清洗、提取与传输。
+
+### 🧠 支柱二：方法论 (Methodology)
+> **"必先利其器" - The Abstract Frameworks.**
+> 思维模型、AI 提示词 (Prompts) 与标准化工作流 (SOP)。它们是指导熵减过程的逻辑核心，定义了如何将数据转化为情报。
+
+---
+
+## 🗂️ 模块索引 (Index)
+
+### 📂 [Tools (工具论)](Tools/)
+具体的工程实现，用于物理层面的降噪。
+
+#### 🔌 [Burp Suite Extension (负熵插件)](Tools/Burp-Extension/README.md)
+* **类型**: Java Plugin (Burp Suite 扩展)
+* **核心功能**: 流量层面的熵减。
+    * **熵减模式**: 智能截断响应体，仅保留 Header 与关键逻辑，为 AI 提供高信噪比上下文。
+    * **流连续性**: 修复 Burp 批量操作交互断点，支持一键批量重发。
+
+#### 🛠️ Scripts (自动化脚本)
+* *Coming Soon...* (更多 Python/Go 辅助脚本正在孵化中)
+
+---
+
+### 📂 [Methodology (方法论)](Methodology/)
+未来的思维框架，用于逻辑层面的降噪。
+
+#### 🤖 AI Prompts (提示词工程)
+* *Coming Soon...* (针对 SQLi、XSS、逻辑漏洞分析的标准化 Prompt 库)
+
+#### 📜 Workflows (工作流规范)
+* *Coming Soon...* (渗透测试标准化熵减作业流程 SOP)
+
+---
+
+## 🤝 参与共建
+
+我们欢迎任何形式的贡献。无论是一个高效的脚本 (Tools)，还是一套清晰的思维模型 (Methodology)，只要能降低网络空间的熵值，都欢迎提交 PR。
+
+*Let's reduce the entropy of the cyber world.*

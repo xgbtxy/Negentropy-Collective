@@ -1,4 +1,12 @@
-package burp;
+import os
+import shutil
+import subprocess
+import glob
+
+# ==========================================
+# Java 源码 (V5 - 极速版: 移除所有弹窗警告)
+# ==========================================
+NEW_JAVA_CODE = r"""package burp;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
@@ -135,3 +143,50 @@ public class BurpExtender implements IBurpExtender, IContextMenuFactory {
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(s, s);
     }
 }
+"""
+
+# ==========================================
+# 自动化流程
+# ==========================================
+def main():
+    root_dir = os.getcwd()
+    ext_dir = os.path.join(root_dir, "Tools", "Burp-Extension")
+    java_file = os.path.join(ext_dir, "src", "main", "java", "burp", "BurpExtender.java")
+    
+    print(f"🚀 启动极速版升级 (Remove Warnings)...")
+
+    # 1. 写入代码
+    with open(java_file, "w", encoding="utf-8") as f:
+        f.write(NEW_JAVA_CODE)
+    print("✅ 源码已更新 (无弹窗版)")
+
+    # 2. 编译
+    print("🔨 正在编译...")
+    try:
+        subprocess.run(["gradle", "clean"], cwd=ext_dir, shell=True)
+        res = subprocess.run(["gradle", "build"], cwd=ext_dir, shell=True)
+        if res.returncode != 0: return
+    except Exception as e:
+        print(e)
+        return
+
+    # 3. 更新 JAR
+    libs_dir = os.path.join(ext_dir, "build", "libs")
+    jar_files = glob.glob(os.path.join(libs_dir, "*.jar"))
+    
+    if jar_files:
+        new_jar = jar_files[0]
+        target = os.path.join(ext_dir, os.path.basename(new_jar))
+        shutil.copy2(new_jar, target)
+        
+        # 清理旧包
+        for old in os.listdir(ext_dir):
+            if old.endswith(".jar") and old != os.path.basename(new_jar):
+                os.remove(os.path.join(ext_dir, old))
+                
+        print("🎉 升级完成！去 Burp 享受丝滑吧。")
+    else:
+        print("❌ 编译失败，没找到 JAR。")
+
+if __name__ == "__main__":
+    main()

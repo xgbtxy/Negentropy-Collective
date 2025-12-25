@@ -2,31 +2,59 @@
 
 > **Entropy increases naturally; Intelligence requires order.**
 
-![Burp Suite](https://img.shields.io/badge/Burp%20Suite-Extension-orange?style=flat-square) ![Java](https://img.shields.io/badge/Language-Java%208%2B-blue?style=flat-square) ![Concept](https://img.shields.io/badge/Concept-Negentropy-purple?style=flat-square)
+![Structure](https://img.shields.io/badge/Structure-Dual%20Pillars-blue?style=flat-square) ![Focus](https://img.shields.io/badge/Focus-Tools%20%26%20Methodology-purple?style=flat-square) ![Status](https://img.shields.io/badge/Status-Active-green?style=flat-square)
 
-[**🇨🇳 中文文档 (Chinese Version)**](README_CN.md)
-
----
-
-## 📖 The Philosophy
-
-**"The future is not about the tool, but the flow."**
-
-In the landscape of modern penetration testing, we are drowning in **Data Entropy**. Security professionals are overwhelmed by thousands of HTTP logs, redundant static resources, and chaotic parameters.
-
-As we integrate AI (LLMs) into security workflows, we realize that the bottleneck is no longer the AI's reasoning power, but the **Data Quality**. Feeding raw, chaotic traffic to an AI is not just a waste of tokens—it creates noise that hinders intelligence.
-
-**Negentropy** is not just a clipboard extension. It is a **Signal Processing Unit** designed for the next-generation automated penetration testing pipeline. Its mission is to function as "Maxwell's Demon" in your workflow: extracting **Order** from **Chaos**.
+[**🇨🇳 中文宣言 (Chinese Version)**](README_CN.md)
 
 ---
 
-## 🧩 Position in Ecosystem
+## 📖 Manifesto
 
-This component serves as the **Data Pre-processing Layer** in the automated penetration testing pipeline:
+**This is not a repository for a single tool, but a collective for "Negentropy" implementations in penetration testing.**
 
-```mermaid
-graph LR
-    A[🌊 Raw Traffic / Chaos] -->|High Entropy| B(Burp Suite)
-    B --> C{🌌 Negentropy Component}
-    C -->|Filtering & Formatting| D[💎 Structured Context / Order]
-    D -->|Input| E[🧠 LLM / AI Brain]
+In cybersecurity, our greatest adversary is **Chaos**—massive traffic, redundant logs, and complex attack surfaces. This repository is dedicated to building a complete **Entropy Reduction System**, transforming chaos into ordered intelligence.
+
+This system is built upon two core pillars:
+
+### 🛠️ Pillar I: Tools (Praxis)
+> **The Tangible Implementations.**
+> Code, plugins, and scripts. These are the physical means of entropy reduction, responsible for data cleaning, extraction, and transmission.
+
+### 🧠 Pillar II: Methodology (Gnosis)
+> **The Abstract Frameworks.**
+> Mental models, AI Prompts, and Standard Operating Procedures (SOPs). These are the logical cores guiding the process, defining how raw data is transmuted into intelligence.
+
+---
+
+## 🗂️ Module Index
+
+### 📂 [Tools](Tools/)
+Engineering implementations for noise reduction at the physical layer.
+
+#### 🔌 [Burp Suite Extension](Tools/Burp-Extension/README.md)
+* **Type**: Java Plugin
+* **Core Function**: Entropy reduction at the traffic level.
+    * **Entropy Reduction Mode**: Intelligently truncates response bodies, preserving only Headers and key logic to provide high signal-to-noise context for AI.
+    * **Flow Continuity**: Fixes interaction breakpoints in Burp's batch operations, enabling one-click batch repeating.
+
+#### 🛠️ Scripts
+* *Coming Soon...* (Python/Go auxiliary scripts in development)
+
+---
+
+### 📂 [Methodology](Methodology/)
+Future frameworks for noise reduction at the logical layer.
+
+#### 🤖 AI Prompts
+* *Coming Soon...* (Standardized Prompt libraries for SQLi, XSS, and logic vulnerability analysis)
+
+#### 📜 Workflows
+* *Coming Soon...* (Standardized SOPs for entropy-reduced penetration testing)
+
+---
+
+## 🤝 Contribution
+
+We welcome all forms of contribution. Whether it is an efficient script (Tools) or a clear mental model (Methodology), if it reduces the entropy of cyberspace, please submit a PR.
+
+*Let's reduce the entropy of the cyber world.*

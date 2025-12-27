@@ -1,25 +1,26 @@
-忽略 Gradle 构建产物
+--- 全局忽略 ---
 
 .gradle/
-build/
-out/
-
-忽略 IDE 配置文件 (IntelliJ IDEA)
-
 .idea/
 *.iml
 *.iws
 *.ipr
-
-忽略 Java 编译产物
-
 *.class
-
-忽略系统文件
-
 .DS_Store
 Thumbs.db
 
-保留最终的 Jar 包 (如果你希望别人能直接下载)
+--- 忽略构建目录 ---
 
+先忽略所有的 build 文件夹
+
+**/build/
+
+--- 显式保留 Entropy 的 Jar 包 ---
+
+必须逐级“反忽略”父目录，Git 才能看到里面的文件
+
+!Tools/Entropy/build/
+Tools/Entropy/build/*
+!Tools/Entropy/build/libs/
+Tools/Entropy/build/libs/*
 !Tools/Entropy/build/libs/*.jar

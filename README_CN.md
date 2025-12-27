@@ -26,7 +26,7 @@
 
 | Project / 模块                                               | Description / 描述                                           | Status   |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | -------- |
-| [**Entropy**](https://www.google.com/search?q=./Tools/Entropy) | **流量层负熵。** Burp 插件，提供工作台（Workspace）、自定义快捷键打标与被动代理联动功能。（原名 *Burp-Negentropy-Extension*） | ✅ Stable |
+| [**Entropy**](https://github.com/xgbtxy/Negentropy-Collective/tree/main/Tools/Entropy) | **流量层负熵。** Burp 插件，提供工作台（Workspace）、自定义快捷键打标与被动代理联动功能。（原名 *Burp-Negentropy-Extension*） | ✅ Stable |
 | **Auto-Recon-Scripts**                                       | *Coming Soon...* 自动化资产侦察脚本集合。                    | 🚧 Dev    |
 
 ### 🧠 支柱二：方法论 (Gnosis / Methodology)
@@ -50,7 +50,7 @@
 
 | Tool / 脚本                                                  | Pain Point / 解决痛点                                        | Lang |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
-| [**Entropy**](https://www.google.com/search?q=./Tools/Entropy) | 解决 Burp 批量交互断层与 AI 分析时的 Token 浪费问题，支持键盘流打标。 | Java |
+| [**Entropy**](https://github.com/xgbtxy/Negentropy-Collective/tree/main/Tools/Entropy) | 解决 Burp 批量交互断层与 AI 分析时的 Token 浪费问题，支持键盘流打标。 | Java |
 | [**Example-Script**](https://www.google.com/search?q=./Scripts/Example) | 针对某具体 OA 系统的全版本硬编码解密脚本。                   | Py   |
 
 #### 💎 遗珠搜集 (Hidden Gems)

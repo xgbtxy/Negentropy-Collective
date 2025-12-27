@@ -1,0 +1,25 @@
+忽略 Gradle 构建产物
+
+.gradle/
+build/
+out/
+
+忽略 IDE 配置文件 (IntelliJ IDEA)
+
+.idea/
+*.iml
+*.iws
+*.ipr
+
+忽略 Java 编译产物
+
+*.class
+
+忽略系统文件
+
+.DS_Store
+Thumbs.db
+
+保留最终的 Jar 包 (如果你希望别人能直接下载)
+
+!Tools/Entropy/build/libs/*.jar

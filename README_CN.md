@@ -4,7 +4,7 @@
 >
 > "We embrace the High Entropy of the cyber world, and distill it into Order."
 
-[🇺🇸 English Manifesto](https://www.google.com/search?q=%23-english-manifesto)
+[🇺🇸 English Manifesto](README.md)
 
 ## 📖 核心宣言 (Manifesto)
 
@@ -57,21 +57,14 @@
 
 收录 GitHub 上 Star 数不高，但在特定场景下有奇效的开源项目。
 
-- $$Project-X$$
-
-   \- *(待添加)* 专注于解决 WebLogic 某偏门版本的回显问题。
-
-- $$Tool-Y$$
-
-   \- *(待添加)* 能够识别出常规扫描器忽略的“二开”特征。
+- **[Project-X]** - *(待添加)* 专注于解决 WebLogic 某偏门版本的回显问题。
+- **[Tool-Y]** - *(待添加)* 能够识别出常规扫描器忽略的“二开”特征。
 
 #### 📑 深度落地 (Deep Dive Resources)
 
 只收录具有“独家思路”或“复现价值”的深度文章，拒绝通稿与水文。
 
-- $$Article-Z$$
-
-   \- *(待添加)* 关于 AI 在逻辑漏洞挖掘中的 Prompt 调优实践。
+- **[Article-Z]** - *(待添加)* 关于 AI 在逻辑漏洞挖掘中的 Prompt 调优实践。
 
 ## 🤝 加入熵减行动 (Contribution)
 

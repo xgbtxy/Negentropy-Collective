@@ -40,14 +40,14 @@ public class BurpExtender implements BurpExtension {
     public static boolean AUTO_EXTRACT_PARAMS = true;
     public static Map<Character, String> TAG_MAP = new HashMap<>();
 
-    // --- 快捷键配置 (默认为 QWER 布局) ---
-    public static char KEY_FEED = 'q';      // 投喂代理
-    public static char KEY_REPEATER = 'w';  // 重放
-    public static char KEY_INTRUDER = 'e';  // 入侵
-    public static char KEY_COPY_LITE = 'c'; // 复制(精简)
-    public static char KEY_COPY_FULL = 'C'; // 复制(完整) Shift+c
-    public static char KEY_CLEAR = 'd';     // 清空标签
-    public static char KEY_DELETE = 'f';    // 删除行
+    // --- 快捷键配置 (QWER 布局) ---
+    public static char KEY_FEED = 'q';      // q: Feed to Proxy (投喂)
+    public static char KEY_REPEATER = 'w';  // w: Repeater (重放)
+    public static char KEY_INTRUDER = 'e';  // e: Intruder (入侵)
+    public static char KEY_COPY_LITE = 'c'; // c: Copy Lite
+    public static char KEY_COPY_FULL = 'C'; // C: Copy Full (Shift+c)
+    public static char KEY_CLEAR = 'd';     // d: Delete Tag (清空)
+    public static char KEY_DELETE = 'f';    // f: Delete Row (删除)
 
     // --- 代理配置 ---
     public static boolean PROXY_ENABLE = false;
@@ -73,7 +73,7 @@ public class BurpExtender implements BurpExtension {
         api.userInterface().registerSuiteTab("Entropy", mainTabs);
         api.userInterface().registerContextMenuItemsProvider(new EntropyContextMenu());
 
-        api.logging().logToOutput("Entropy v12.0 Loaded. QWER Keyboard Layout Active.");
+        api.logging().logToOutput("Entropy v12.3 Loaded. QWER Shortcuts Active.");
     }
 
     private void initDefaultTags() {
@@ -159,31 +159,20 @@ public class BurpExtender implements BurpExtension {
 
                 JMenuItem itemFeed = new JMenuItem("Batch -> Feed Proxy (" + BurpExtender.KEY_FEED + ")");
                 itemFeed.setFont(itemFeed.getFont().deriveFont(Font.BOLD));
-                itemFeed.addActionListener(e -> {
-                    if (!BurpExtender.PROXY_ENABLE) {
-                        JOptionPane.showMessageDialog(null, "Proxy Disabled. Check Config tab.");
-                        return;
-                    }
-                    List<HttpRequestResponse> reqs = getRequests(event);
-                    executor.submit(() -> {
-                        int count = 0;
-                        for (HttpRequestResponse rr : reqs) { if (sendToProxy(rr.request())) count++; }
-                        api.logging().logToOutput("Fed " + count + " requests to proxy.");
-                    });
-                });
+                itemFeed.addActionListener(e -> doFeedProxyCheck(getRequests(event)));
 
-                JMenuItem itemAiLite = new JMenuItem("Copy Lite (" + BurpExtender.KEY_COPY_LITE + ")");
+                JMenuItem itemAiLite = new JMenuItem("Copy Lite (AI 复制 - 仅大小) [" + BurpExtender.KEY_COPY_LITE + "]");
                 itemAiLite.addActionListener(e -> executor.submit(() -> exportToClipboard(getRequests(event), false)));
 
-                JMenuItem itemAiFull = new JMenuItem("Copy Full (" + BurpExtender.KEY_COPY_FULL + ")");
+                JMenuItem itemAiFull = new JMenuItem("Copy Full (AI 复制 - 完整) [" + BurpExtender.KEY_COPY_FULL + "]");
                 itemAiFull.addActionListener(e -> executor.submit(() -> exportToClipboard(getRequests(event), true)));
 
-                JMenuItem itemRep = new JMenuItem("Batch -> Repeater (" + BurpExtender.KEY_REPEATER + ")");
+                JMenuItem itemRep = new JMenuItem("Batch -> Repeater (批量重放) [" + BurpExtender.KEY_REPEATER + "]");
                 itemRep.addActionListener(e -> {
                     for (HttpRequestResponse rr : getRequests(event)) api.repeater().sendToRepeater(rr.request());
                 });
 
-                JMenuItem itemIntruder = new JMenuItem("Batch -> Intruder (" + BurpExtender.KEY_INTRUDER + ")");
+                JMenuItem itemIntruder = new JMenuItem("Batch -> Intruder (批量入侵) [" + BurpExtender.KEY_INTRUDER + "]");
                 itemIntruder.addActionListener(e -> {
                     for (HttpRequestResponse rr : getRequests(event)) api.intruder().sendToIntruder(rr.request());
                 });
@@ -211,6 +200,18 @@ public class BurpExtender implements BurpExtension {
             }
             return reqs;
         }
+
+        private void doFeedProxyCheck(List<HttpRequestResponse> reqs) {
+            if (!BurpExtender.PROXY_ENABLE) {
+                JOptionPane.showMessageDialog(null, "Proxy Disabled. Check Config tab.");
+                return;
+            }
+            executor.submit(() -> {
+                int count = 0;
+                for (HttpRequestResponse rr : reqs) { if (sendToProxy(rr.request())) count++; }
+                api.logging().logToOutput("Fed " + count + " requests to proxy.");
+            });
+        }
     }
 
     // ========================================================================
@@ -235,6 +236,10 @@ public class BurpExtender implements BurpExtension {
             table.setRowHeight(25);
             table.setAutoCreateRowSorter(true);
             
+            // 【关键修复】关闭自动编辑，确保快捷键不被输入框吞噬
+            table.putClientProperty("JTable.autoStartsEdit", Boolean.FALSE); 
+            table.setFocusable(true);
+
             table.getColumnModel().getColumn(0).setPreferredWidth(40);
             table.getColumnModel().getColumn(1).setPreferredWidth(60);
             table.getColumnModel().getColumn(2).setPreferredWidth(300);
@@ -285,7 +290,7 @@ public class BurpExtender implements BurpExtension {
             searchField.addKeyListener(filterListener);
             regexMode.addActionListener(e -> filterListener.keyReleased(null));
 
-            // 右键菜单
+            // 右键菜单 (更新提示为 QWER)
             JPopupMenu popup = new JPopupMenu();
             JMenuItem feedItem = new JMenuItem("Batch -> Feed Proxy (" + BurpExtender.KEY_FEED + ")");
             feedItem.addActionListener(e -> doFeedProxy());
@@ -355,8 +360,8 @@ public class BurpExtender implements BurpExtension {
             List<Integer> idx = new ArrayList<>();
             for(int r : rows) idx.add(table.convertRowIndexToModel(r));
             idx.sort(Collections.reverseOrder());
-            // 修复：i 已经是 int 类型，无需 .intValue()
-            for(int i : idx) entries.remove(i);
+            // 修复：直接使用 int i
+            for(int i : idx) entries.remove(i); 
             tableModel.fireTableDataChanged();
         }
         private void doClear() {

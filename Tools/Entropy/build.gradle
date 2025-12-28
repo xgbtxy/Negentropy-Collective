@@ -2,8 +2,8 @@ plugins {
     id 'java'
 }
 
-group 'org.example'
-version '1.0'
+group 'io.github.xgbtxy'
+version '1.0.0'
 
 repositories {
     mavenCentral()
@@ -24,8 +24,22 @@ tasks.withType(JavaCompile) {
 }
 
 jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Entropy',
+            'Implementation-Version': archiveVersion,
+            'Built-By': 'xgbtxy',
+            'Created-By': 'xgbtxy',
+            'Author': 'xgbtxy',
+            'Implementation-Vendor': 'Negentropy-Collective'
+        )
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+
     archiveFileName = 'Entropy.jar'
 }

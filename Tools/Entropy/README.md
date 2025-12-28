@@ -6,15 +6,13 @@
 >
 > **Entropy** 是一款专为 Burp Suite 打造的流量梳理与资产管理插件。它引入了独立的 **“梳理台 (Workspace)”** 概念，帮助安全研究人员从杂乱的 Proxy 历史中抽离高价值资产。配合 **全键盘工作流**，您可以极速完成资产的标记与清洗，并一键投喂给 Xray/Rad 等被动扫描器，实现“人工筛选 + 自动化扫描”的完美闭环。
 >
-> [👇 Switch to English / 英文版](entropy-english)
->
 > ## 📸 插件界面示例
 >
-> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/1.png
+> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/1.png?raw=true
 >
-> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/2.png
+> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/2.png?raw=true
 >
-> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/3.png
+> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/3.png?raw=true
 >
 > ## ✨ 核心功能 (Core Features)
 >

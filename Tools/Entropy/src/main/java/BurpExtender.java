@@ -66,7 +66,7 @@ public class BurpExtender implements BurpExtension {
         api.userInterface().registerSuiteTab("Entropy", mainTabs);
         api.userInterface().registerContextMenuItemsProvider(new EntropyContextMenu());
 
-        api.logging().logToOutput("Entropy v11.2 Loaded. Delete Key: '" + DELETE_KEY + "'");
+        api.logging().logToOutput("Entropy v11.3 Loaded. Workspace now has full context menu.");
     }
 
     private void initDefaultTags() {
@@ -77,6 +77,58 @@ public class BurpExtender implements BurpExtension {
         TAG_MAP.put('5', "[RCE] ");
         TAG_MAP.put('6', "[Logic] ");
         TAG_MAP.put('7', "[Upload] ");
+    }
+
+    // ========================================================================
+    // 公共工具方法：处理 AI 复制逻辑
+    // ========================================================================
+    private static void exportToClipboard(List<HttpRequestResponse> messages, boolean isFullMode) {
+        StringBuilder sb = new StringBuilder();
+        for (HttpRequestResponse msg : messages) {
+            if (msg.request() != null) sb.append(msg.request().toString()).append("\n\n");
+            
+            if (msg.response() == null) {
+                sb.append("(No Response)");
+            } else {
+                HttpResponse res = msg.response();
+                sb.append(res.headers().toString()).append("\n\n");
+                
+                int bodySize = res.body().length();
+
+                if (!isFullMode) {
+                    // Lite: 丢弃 Body，记录大小
+                    sb.append("{Lite Mode: Body Omitted - Size: ").append(bodySize).append(" bytes}");
+                } else {
+                    // Full: 检查二进制/0x00
+                    boolean isBinaryHeader = false;
+                    for (HttpHeader h : res.headers()) {
+                        String val = h.value().toLowerCase();
+                        if (h.name().equalsIgnoreCase("Content-Type") && 
+                           (val.matches(".*(image|zip|pdf|octet|stream|video|audio).*"))) {
+                            isBinaryHeader = true; break;
+                        }
+                    }
+
+                    boolean hasNullByte = false;
+                    if (!isBinaryHeader) {
+                        ByteArray bodyBytes = res.body();
+                        int checkLen = Math.min(bodyBytes.length(), 2048);
+                        for (int i = 0; i < checkLen; i++) {
+                            if (bodyBytes.getBytes()[i] == 0x00) { hasNullByte = true; break; }
+                        }
+                    }
+
+                    if (isBinaryHeader || hasNullByte) {
+                        sb.append("{BINARY/IMAGE OMITTED - Size: ").append(bodySize).append(" bytes}");
+                    } else {
+                        sb.append(res.bodyToString());
+                    }
+                }
+            }
+            sb.append("\n\n==================================================\n\n");
+        }
+        StringSelection s = new StringSelection(sb.toString());
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(s, s);
     }
 
     // ========================================================================
@@ -92,11 +144,11 @@ public class BurpExtender implements BurpExtension {
                 // 1. 发送到 Entropy 工作台
                 JMenuItem itemSend = new JMenuItem("Send to Workspace (发送到梳理台)");
                 itemSend.addActionListener(e -> {
-                    List<HttpRequest> reqs = getRequests(event);
+                    List<HttpRequestResponse> reqs = getRequests(event);
                     executor.submit(() -> {
                         List<ApiEntry> newEntries = new ArrayList<>();
                         int startId = entries.size() + 1;
-                        for (HttpRequest req : reqs) newEntries.add(new ApiEntry(startId++, req));
+                        for (HttpRequestResponse rr : reqs) newEntries.add(new ApiEntry(startId++, rr));
                         SwingUtilities.invokeLater(() -> {
                             entries.addAll(newEntries);
                             if (workspaceTab != null) workspaceTab.refreshTable();
@@ -112,34 +164,34 @@ public class BurpExtender implements BurpExtension {
                         JOptionPane.showMessageDialog(null, "Proxy Disabled. Check Config tab.\n代理未开启，请检查配置页。");
                         return;
                     }
-                    List<HttpRequest> reqs = getRequests(event);
+                    List<HttpRequestResponse> reqs = getRequests(event);
                     executor.submit(() -> {
                         int count = 0;
-                        for (HttpRequest req : reqs) { if (sendToProxy(req)) count++; }
+                        for (HttpRequestResponse rr : reqs) { if (sendToProxy(rr.request())) count++; }
                         api.logging().logToOutput("Fed " + count + " requests to proxy.");
                     });
                 });
 
                 // 3. AI 复制 (Lite - 仅大小)
                 JMenuItem itemAiLite = new JMenuItem("Copy for AI (Lite - Size Only/精简版)");
-                itemAiLite.addActionListener(e -> executor.submit(() -> copyForAI(event, false)));
+                itemAiLite.addActionListener(e -> executor.submit(() -> exportToClipboard(getRequests(event), false)));
 
                 // 4. AI 复制 (Full - 防截断)
                 JMenuItem itemAiFull = new JMenuItem("Copy for AI (Full - Text/完整版)");
-                itemAiFull.addActionListener(e -> executor.submit(() -> copyForAI(event, true)));
+                itemAiFull.addActionListener(e -> executor.submit(() -> exportToClipboard(getRequests(event), true)));
 
                 // 5. 批量 Repeater
                 JMenuItem itemRep = new JMenuItem("Batch -> Repeater (批量重放)");
                 itemRep.addActionListener(e -> {
-                    List<HttpRequest> reqs = getRequests(event);
-                    for (HttpRequest req : reqs) api.repeater().sendToRepeater(req);
+                    List<HttpRequestResponse> reqs = getRequests(event);
+                    for (HttpRequestResponse rr : reqs) api.repeater().sendToRepeater(rr.request());
                 });
 
                 // 6. 批量 Intruder
                 JMenuItem itemIntruder = new JMenuItem("Batch -> Intruder (批量入侵)");
                 itemIntruder.addActionListener(e -> {
-                    List<HttpRequest> reqs = getRequests(event);
-                    for (HttpRequest req : reqs) api.intruder().sendToIntruder(req);
+                    List<HttpRequestResponse> reqs = getRequests(event);
+                    for (HttpRequestResponse rr : reqs) api.intruder().sendToIntruder(rr.request());
                 });
 
                 menuList.add(itemSend);
@@ -157,80 +209,22 @@ public class BurpExtender implements BurpExtension {
             return null;
         }
 
-        private List<HttpRequest> getRequests(ContextMenuEvent event) {
-            List<HttpRequest> reqs = new ArrayList<>();
+        private List<HttpRequestResponse> getRequests(ContextMenuEvent event) {
+            List<HttpRequestResponse> reqs = new ArrayList<>();
             // 如果是在 Editor 里(单选)
             if (event.messageEditorRequestResponse().isPresent()) {
-                reqs.add(event.messageEditorRequestResponse().get().requestResponse().request());
+                reqs.add(event.messageEditorRequestResponse().get().requestResponse());
             } 
             // 如果是在 Proxy History 里(多选)
             else {
-                event.selectedRequestResponses().forEach(rr -> reqs.add(rr.request()));
+                reqs.addAll(event.selectedRequestResponses());
             }
             return reqs;
-        }
-
-        private void copyForAI(ContextMenuEvent event, boolean isFullMode) {
-            StringBuilder sb = new StringBuilder();
-            List<HttpRequestResponse> messages = new ArrayList<>();
-            
-            if (event.messageEditorRequestResponse().isPresent()) {
-                 messages.add(event.messageEditorRequestResponse().get().requestResponse());
-            } else {
-                messages.addAll(event.selectedRequestResponses());
-            }
-
-            for (HttpRequestResponse msg : messages) {
-                if (msg.request() != null) sb.append(msg.request().toString()).append("\n\n");
-                
-                if (msg.response() == null) {
-                    sb.append("(No Response)");
-                } else {
-                    HttpResponse res = msg.response();
-                    sb.append(res.headers().toString()).append("\n\n");
-                    
-                    int bodySize = res.body().length();
-
-                    if (!isFullMode) {
-                        // Lite 模式：记录大小，丢弃 Body
-                        sb.append("{Lite Mode: Body Omitted - Size: ").append(bodySize).append(" bytes}");
-                    } else {
-                        // Full 模式：检查二进制和 0x00
-                        boolean isBinaryHeader = false;
-                        for (HttpHeader h : res.headers()) {
-                            String val = h.value().toLowerCase();
-                            if (h.name().equalsIgnoreCase("Content-Type") && 
-                               (val.matches(".*(image|zip|pdf|octet|stream|video|audio).*"))) {
-                                isBinaryHeader = true; break;
-                            }
-                        }
-
-                        boolean hasNullByte = false;
-                        if (!isBinaryHeader) {
-                            ByteArray bodyBytes = res.body();
-                            int checkLen = Math.min(bodyBytes.length(), 2048);
-                            for (int i = 0; i < checkLen; i++) {
-                                if (bodyBytes.getBytes()[i] == 0x00) { hasNullByte = true; break; }
-                            }
-                        }
-
-                        if (isBinaryHeader || hasNullByte) {
-                            sb.append("{BINARY/IMAGE OMITTED - Size: ").append(bodySize).append(" bytes}");
-                        } else {
-                            sb.append(res.bodyToString());
-                        }
-                    }
-                }
-                sb.append("\n\n==================================================\n\n");
-            }
-            
-            StringSelection s = new StringSelection(sb.toString());
-            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(s, s);
         }
     }
 
     // ========================================================================
-    // Workspace Tab (梳理台)
+    // Workspace Tab (梳理台 - 增强版)
     // ========================================================================
     class WorkspaceTab extends JPanel {
         private final ApiTableModel tableModel;
@@ -274,6 +268,7 @@ public class BurpExtender implements BurpExtension {
                             }
                             modelIndices.sort(Collections.reverseOrder());
                             
+                            // 修复：modelIndex 已经是 int 类型，无需 .intValue()
                             for (int modelIndex : modelIndices) {
                                 entries.remove(modelIndex);
                             }
@@ -329,39 +324,73 @@ public class BurpExtender implements BurpExtension {
             searchField.addKeyListener(filterListener);
             regexMode.addActionListener(e -> filterListener.keyReleased(null));
 
-            // 表格内部右键菜单
+            // --- 梳理台增强版右键菜单 ---
             JPopupMenu popup = new JPopupMenu();
+            
+            // 1. Feed Proxy
             JMenuItem feedItem = new JMenuItem("Batch -> Feed to Proxy (投喂到代理)");
             feedItem.addActionListener(e -> {
                 if(!BurpExtender.PROXY_ENABLE) { JOptionPane.showMessageDialog(this, "Proxy Disabled (代理未开启)"); return; }
                 int[] rows = table.getSelectedRows();
                 executor.submit(() -> {
-                   for(int r : rows) sendToProxy(entries.get(table.convertRowIndexToModel(r)).req);
+                   for(int r : rows) sendToProxy(entries.get(table.convertRowIndexToModel(r)).requestResponse.request());
                 });
             });
 
+            // 2. Repeater
             JMenuItem repItem = new JMenuItem("Batch -> Repeater (批量重放)");
             repItem.addActionListener(e -> {
                 for(int r : table.getSelectedRows()) {
                     ApiEntry en = entries.get(table.convertRowIndexToModel(r));
                     String name = en.tag.isEmpty() ? en.method + " " + shortPath(en.path) : en.tag;
-                    api.repeater().sendToRepeater(en.req, name);
+                    api.repeater().sendToRepeater(en.requestResponse.request(), name);
                 }
             });
+
+            // 3. Intruder (新增)
+            JMenuItem intItem = new JMenuItem("Batch -> Intruder (批量入侵)");
+            intItem.addActionListener(e -> {
+                for(int r : table.getSelectedRows()) {
+                    ApiEntry en = entries.get(table.convertRowIndexToModel(r));
+                    api.intruder().sendToIntruder(en.requestResponse.request());
+                }
+            });
+
+            // 4. Copy Lite (新增)
+            JMenuItem copyLite = new JMenuItem("Copy for AI (Lite - Size Only)");
+            copyLite.addActionListener(e -> {
+                List<HttpRequestResponse> list = new ArrayList<>();
+                for(int r : table.getSelectedRows()) list.add(entries.get(table.convertRowIndexToModel(r)).requestResponse);
+                executor.submit(() -> exportToClipboard(list, false));
+            });
+
+            // 5. Copy Full (新增)
+            JMenuItem copyFull = new JMenuItem("Copy for AI (Full - Text)");
+            copyFull.addActionListener(e -> {
+                List<HttpRequestResponse> list = new ArrayList<>();
+                for(int r : table.getSelectedRows()) list.add(entries.get(table.convertRowIndexToModel(r)).requestResponse);
+                executor.submit(() -> exportToClipboard(list, true));
+            });
             
+            // 6. Delete
             JMenuItem delItem = new JMenuItem("Delete Row (删除行)");
             delItem.addActionListener(e -> {
                 int[] rows = table.getSelectedRows();
-                // 同样使用安全的倒序删除
-                List<Integer> modelIndices = new ArrayList<>();
-                for (int r : rows) modelIndices.add(table.convertRowIndexToModel(r));
-                modelIndices.sort(Collections.reverseOrder());
-                for (int i : modelIndices) entries.remove(i);
+                List<Integer> idx = new ArrayList<>();
+                for(int r : rows) idx.add(table.convertRowIndexToModel(r));
+                idx.sort(Collections.reverseOrder());
+                // 修复：i 已经是 int 类型，无需 .intValue()
+                for(int i : idx) entries.remove(i);
                 tableModel.fireTableDataChanged();
             });
 
             popup.add(feedItem);
+            popup.addSeparator();
             popup.add(repItem);
+            popup.add(intItem);
+            popup.addSeparator();
+            popup.add(copyLite);
+            popup.add(copyFull);
             popup.addSeparator();
             popup.add(delItem);
             table.setComponentPopupMenu(popup);
@@ -369,7 +398,6 @@ public class BurpExtender implements BurpExtension {
             add(topPanel, BorderLayout.NORTH);
             add(new JScrollPane(table), BorderLayout.CENTER);
             
-            // 底部提示动态显示配置的按键
             JLabel status = new JLabel("  [Shortcuts] 1-7: Tag | '" + BurpExtender.CLEAR_KEY + "': Clear Name | '" + BurpExtender.DELETE_KEY + "': Delete Row | Regex Filter");
             status.setForeground(Color.GRAY);
             add(status, BorderLayout.SOUTH);
@@ -507,7 +535,7 @@ public class BurpExtender implements BurpExtension {
                     "<p>Turn Chaos into Order. (从混乱到有序)</p>" +
                     "<h3>Features (功能):</h3>" +
                     "<ul>" +
-                    "<li><b>Workspace (梳理台):</b> The 'Low Entropy' zone. Only keep valuable assets here.<br>低熵工作区，只保留有价值的资产。</li>" +
+                    "<li><b>Workspace (梳理台):</b> The 'Low Entropy' zone. All context menu actions supported here.<br>低熵工作区，支持完整右键功能。</li>" +
                     "<li><b>Shortcuts (快捷键):</b><br>- Press <b>1-7</b>: Tag (打标签)<br>- Press <b>d</b>: Clear Name (清空标签)<br>- Press <b>f</b>: Delete Row (删除行)<br>(Keys 'd' and 'f' are customizable in Config)</li>" +
                     "<li><b>Proxy Linkage (代理联动):</b> Right click -> <b>Feed to Proxy</b> to send requests to Xray/Rad passively.<br>右键投喂给被动扫描器。</li>" +
                     "<li><b>AI Copy (AI复制):</b> Lite mode records size only. Full mode keeps text safe.<br>精简模式只记录大小，全量模式保留文本并防截断。</li>" +
@@ -518,9 +546,16 @@ public class BurpExtender implements BurpExtension {
     }
 
     static class ApiEntry {
-        int id; HttpRequest req; String method, path, tag="", params;
-        ApiEntry(int id, HttpRequest req) {
-            this.id=id; this.req=req; this.method=req.method(); this.path=req.path();
+        int id; 
+        HttpRequestResponse requestResponse; // 升级为完整对象
+        String method, path, tag="", params;
+        
+        ApiEntry(int id, HttpRequestResponse rr) {
+            this.id=id; 
+            this.requestResponse = rr; 
+            HttpRequest req = rr.request();
+            this.method=req.method(); 
+            this.path=req.path();
             this.params = BurpExtender.AUTO_EXTRACT_PARAMS ? extract(req) : "";
         }
     }

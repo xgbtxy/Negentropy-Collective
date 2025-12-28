@@ -8,11 +8,11 @@
 >
 > ## 📸 插件界面示例
 >
-> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/1.png?raw=true
+> ![1.png](https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/1.png?raw=true)
 >
-> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/2.png?raw=true
+> ![2.png](https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/2.png?raw=true)
 >
-> https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/3.png?raw=true
+> ![3.png](https://github.com/xgbtxy/Negentropy-Collective/blob/main/Tools/Entropy/repo/3.png?raw=true)
 >
 > ## ✨ 核心功能 (Core Features)
 >

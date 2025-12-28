@@ -1,9 +1,9 @@
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
-import burp.api.montoya.core.HighlightColor;
 import burp.api.montoya.http.message.HttpHeader;
 import burp.api.montoya.http.message.HttpRequestResponse;
+import burp.api.montoya.http.message.MimeType;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.ui.contextmenu.ContextMenuEvent;
@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class BurpExtender implements BurpExtension {
 
@@ -39,16 +40,17 @@ public class BurpExtender implements BurpExtension {
 
     // --- 全局配置 ---
     public static boolean AUTO_EXTRACT_PARAMS = true;
+    public static boolean ENABLE_SHORTCUTS = true; // 快捷键总开关
     public static Map<Character, String> TAG_MAP = new HashMap<>();
 
-    // --- 快捷键配置 (QWER) ---
-    public static char KEY_FEED = 'q';      
-    public static char KEY_REPEATER = 'w';  
-    public static char KEY_INTRUDER = 'e';  
-    public static char KEY_COPY_LITE = 'c'; 
-    public static char KEY_COPY_FULL = 'C'; 
-    public static char KEY_CLEAR = 'd';     
-    public static char KEY_DELETE = 'f';    
+    // --- 快捷键配置 (支持 null) ---
+    public static Character KEY_FEED = 'q';      
+    public static Character KEY_REPEATER = 'w';  
+    public static Character KEY_INTRUDER = 'e';  
+    public static Character KEY_COPY_LITE = 'c'; 
+    public static Character KEY_COPY_FULL = 'C'; 
+    public static Character KEY_CLEAR = 'd';     
+    public static Character KEY_DELETE = 'f';    
 
     // --- 代理配置 ---
     public static boolean PROXY_ENABLE = false;
@@ -74,7 +76,7 @@ public class BurpExtender implements BurpExtension {
         api.userInterface().registerSuiteTab("Entropy", mainTabs);
         api.userInterface().registerContextMenuItemsProvider(new EntropyContextMenu());
 
-        api.logging().logToOutput("Entropy v13.1 Loaded. Strategic Workspace (Host Column + Dedupe) Ready.");
+        api.logging().logToOutput("Entropy v14.1 Loaded. Bilingual UI & Shortcuts Ready.");
     }
 
     private void initDefaultTags() {
@@ -94,15 +96,12 @@ public class BurpExtender implements BurpExtension {
         StringBuilder sb = new StringBuilder();
         for (HttpRequestResponse msg : messages) {
             if (msg.request() != null) sb.append(msg.request().toString()).append("\n\n");
-            
             if (msg.response() == null) {
                 sb.append("(No Response)");
             } else {
                 HttpResponse res = msg.response();
                 sb.append(res.headers().toString()).append("\n\n");
-                
                 int bodySize = res.body().length();
-
                 if (!isFullMode) {
                     sb.append("{Lite Mode: Body Omitted - Size: ").append(bodySize).append(" bytes}");
                 } else {
@@ -136,7 +135,7 @@ public class BurpExtender implements BurpExtension {
     }
 
     // ========================================================================
-    // 全局右键菜单 (Proxy History 等地方) - 移除快捷键提示
+    // 右键菜单 (全局通用)
     // ========================================================================
     class EntropyContextMenu implements ContextMenuItemsProvider {
         @Override
@@ -162,41 +161,8 @@ public class BurpExtender implements BurpExtension {
                 itemFeed.setFont(itemFeed.getFont().deriveFont(Font.BOLD));
                 itemFeed.addActionListener(e -> doFeedProxyCheck(getRequests(event)));
 
-                JMenu menuTag = new JMenu("Add Tag to History (原生标记)");
-                List<Character> keys = new ArrayList<>(TAG_MAP.keySet());
-                Collections.sort(keys);
-                for (Character key : keys) {
-                    String tag = TAG_MAP.get(key);
-                    JMenuItem tagItem = new JMenuItem(tag);
-                    tagItem.addActionListener(e -> {
-                        List<HttpRequestResponse> reqs = getRequests(event);
-                        for (HttpRequestResponse rr : reqs) {
-                            String currentNotes = rr.annotations().notes();
-                            if (currentNotes == null) currentNotes = "";
-                            if (!currentNotes.contains(tag.trim())) {
-                                rr.annotations().setNotes(tag.trim() + " " + currentNotes);
-                                if (tag.contains("SQL")) rr.annotations().setHighlightColor(HighlightColor.RED);
-                                else if (tag.contains("XSS")) rr.annotations().setHighlightColor(HighlightColor.BLUE);
-                                else if (tag.contains("RCE")) rr.annotations().setHighlightColor(HighlightColor.ORANGE);
-                                else rr.annotations().setHighlightColor(HighlightColor.YELLOW);
-                            }
-                        }
-                    });
-                    menuTag.add(tagItem);
-                }
-                JMenuItem clearTagItem = new JMenuItem("Clear Tags (清除标记)");
-                clearTagItem.addActionListener(e -> {
-                    for (HttpRequestResponse rr : getRequests(event)) {
-                        rr.annotations().setNotes("");
-                        rr.annotations().setHighlightColor(HighlightColor.NONE);
-                    }
-                });
-                menuTag.addSeparator();
-                menuTag.add(clearTagItem);
-
                 JMenuItem itemAiLite = new JMenuItem("Copy Lite (AI复制-精简)");
                 itemAiLite.addActionListener(e -> executor.submit(() -> exportToClipboard(getRequests(event), false)));
-
                 JMenuItem itemAiFull = new JMenuItem("Copy Full (AI复制-完整)");
                 itemAiFull.addActionListener(e -> executor.submit(() -> exportToClipboard(getRequests(event), true)));
 
@@ -204,14 +170,12 @@ public class BurpExtender implements BurpExtension {
                 itemRep.addActionListener(e -> {
                     for (HttpRequestResponse rr : getRequests(event)) api.repeater().sendToRepeater(rr.request());
                 });
-
                 JMenuItem itemIntruder = new JMenuItem("Batch -> Intruder (批量入侵)");
                 itemIntruder.addActionListener(e -> {
                     for (HttpRequestResponse rr : getRequests(event)) api.intruder().sendToIntruder(rr.request());
                 });
 
                 menuList.add(itemSend);
-                menuList.add(menuTag);
                 menuList.add(new JSeparator());
                 menuList.add(itemFeed);
                 menuList.add(new JSeparator());
@@ -237,7 +201,7 @@ public class BurpExtender implements BurpExtension {
 
         private void doFeedProxyCheck(List<HttpRequestResponse> reqs) {
             if (!BurpExtender.PROXY_ENABLE) {
-                JOptionPane.showMessageDialog(null, "Proxy Disabled. Check Config tab.");
+                JOptionPane.showMessageDialog(null, "Proxy Disabled. Check Config tab.\n代理未开启，请在配置页启用。");
                 return;
             }
             executor.submit(() -> {
@@ -249,61 +213,70 @@ public class BurpExtender implements BurpExtension {
     }
 
     // ========================================================================
-    // Workspace Tab (梳理台 - 增强版)
+    // Workspace Tab (梳理台)
     // ========================================================================
     class WorkspaceTab extends JPanel {
         private final ApiTableModel tableModel;
         private final JTable table;
-        private final JLabel countLabel; // 统计 Label
+        private final JLabel statusLabel;
+        private final JComboBox<String> mimeFilter;
 
         public WorkspaceTab(MontoyaApi api, List<ApiEntry> entries) {
             setLayout(new BorderLayout());
 
-            // 顶部面板：搜索 + 去重按钮
+            // 顶部
             JPanel topPanel = new JPanel(new BorderLayout());
-            JPanel searchContainer = new JPanel(new BorderLayout());
-            JTextField searchField = new JTextField();
-            JCheckBox regexMode = new JCheckBox("Regex");
-            searchContainer.add(new JLabel(" Search: "), BorderLayout.WEST);
-            searchContainer.add(searchField, BorderLayout.CENTER);
-            searchContainer.add(regexMode, BorderLayout.EAST);
+            JPanel searchContainer = new JPanel(new FlowLayout(FlowLayout.LEFT));
             
-            // 去重按钮
+            JTextField searchField = new JTextField(15);
+            JCheckBox regexMode = new JCheckBox("Regex (正则)");
+            String[] mimeTypes = {"All Types (全部)", "JSON", "HTML", "SCRIPT", "IMAGE", "XML", "CSS", "PLAIN", "OTHER"};
+            mimeFilter = new JComboBox<>(mimeTypes);
+            
+            searchContainer.add(new JLabel("Search (搜索): "));
+            searchContainer.add(searchField);
+            searchContainer.add(regexMode);
+            searchContainer.add(new JLabel(" |  MIME (类型): "));
+            searchContainer.add(mimeFilter);
+
             JButton dedupeBtn = new JButton("Deduplicate (自动去重)");
-            dedupeBtn.setToolTipText("Remove duplicates based on Host + Method + URL + Params");
             dedupeBtn.addActionListener(e -> deduplicate());
 
-            topPanel.add(searchContainer, BorderLayout.CENTER);
+            topPanel.add(searchContainer, BorderLayout.WEST);
             topPanel.add(dedupeBtn, BorderLayout.EAST);
 
+            // 表格
             tableModel = new ApiTableModel();
             table = new JTable(tableModel);
             table.setRowHeight(25);
             table.setAutoCreateRowSorter(true);
-            
             table.putClientProperty("JTable.autoStartsEdit", Boolean.FALSE); 
             table.setFocusable(true);
 
-            // 设置列宽 (新增 Host 列)
-            table.getColumnModel().getColumn(0).setPreferredWidth(40);  // ID
-            table.getColumnModel().getColumn(1).setPreferredWidth(150); // Host
-            table.getColumnModel().getColumn(2).setPreferredWidth(60);  // Method
-            table.getColumnModel().getColumn(3).setPreferredWidth(300); // URL
-            table.getColumnModel().getColumn(4).setPreferredWidth(150); // Tag
-            table.getColumnModel().getColumn(5).setPreferredWidth(200); // Params
+            table.getColumnModel().getColumn(0).setPreferredWidth(30);  
+            table.getColumnModel().getColumn(1).setPreferredWidth(120); 
+            table.getColumnModel().getColumn(2).setPreferredWidth(50);  
+            table.getColumnModel().getColumn(3).setPreferredWidth(250); 
+            table.getColumnModel().getColumn(4).setPreferredWidth(50);  
+            table.getColumnModel().getColumn(5).setPreferredWidth(100); 
+            table.getColumnModel().getColumn(6).setPreferredWidth(150); 
 
             // 键盘监听
             table.addKeyListener(new KeyAdapter() {
                 @Override
                 public void keyPressed(KeyEvent e) {
+                    if (!BurpExtender.ENABLE_SHORTCUTS) return;
+
                     char key = e.getKeyChar(); 
-                    if (key == BurpExtender.KEY_FEED) { doFeedProxy(); e.consume(); return; }
-                    if (key == BurpExtender.KEY_REPEATER) { doBatchRepeater(); e.consume(); return; }
-                    if (key == BurpExtender.KEY_INTRUDER) { doBatchIntruder(); e.consume(); return; }
-                    if (key == BurpExtender.KEY_COPY_LITE) { doCopy(false); e.consume(); return; }
-                    if (key == BurpExtender.KEY_COPY_FULL) { doCopy(true); e.consume(); return; }
-                    if (Character.toLowerCase(key) == Character.toLowerCase(BurpExtender.KEY_DELETE)) { doDelete(); e.consume(); return; }
-                    if (Character.toLowerCase(key) == Character.toLowerCase(BurpExtender.KEY_CLEAR)) { doClear(); e.consume(); return; }
+                    if (BurpExtender.KEY_FEED != null && key == BurpExtender.KEY_FEED) { doFeedProxy(); e.consume(); return; }
+                    if (BurpExtender.KEY_REPEATER != null && key == BurpExtender.KEY_REPEATER) { doBatchRepeater(); e.consume(); return; }
+                    if (BurpExtender.KEY_INTRUDER != null && key == BurpExtender.KEY_INTRUDER) { doBatchIntruder(); e.consume(); return; }
+                    if (BurpExtender.KEY_COPY_LITE != null && key == BurpExtender.KEY_COPY_LITE) { doCopy(false); e.consume(); return; }
+                    if (BurpExtender.KEY_COPY_FULL != null && key == BurpExtender.KEY_COPY_FULL) { doCopy(true); e.consume(); return; }
+                    
+                    if (BurpExtender.KEY_DELETE != null && Character.toLowerCase(key) == Character.toLowerCase(BurpExtender.KEY_DELETE)) { doDelete(); e.consume(); return; }
+                    if (BurpExtender.KEY_CLEAR != null && Character.toLowerCase(key) == Character.toLowerCase(BurpExtender.KEY_CLEAR)) { doClear(); e.consume(); return; }
+
                     if (BurpExtender.TAG_MAP.containsKey(Character.toLowerCase(key))) {
                         doTag(BurpExtender.TAG_MAP.get(Character.toLowerCase(key)));
                         e.consume();
@@ -311,38 +284,55 @@ public class BurpExtender implements BurpExtension {
                 }
             });
 
-            // 过滤
+            // 过滤器
             TableRowSorter<ApiTableModel> sorter = new TableRowSorter<>(tableModel);
             table.setRowSorter(sorter);
-            KeyAdapter filterListener = new KeyAdapter() {
-                public void keyReleased(KeyEvent e) {
-                    String text = searchField.getText();
-                    if (text.isEmpty()) sorter.setRowFilter(null);
-                    else {
-                        try {
-                            String p = regexMode.isSelected() ? "(?i)" + text : "(?i)" + Pattern.quote(text);
-                            sorter.setRowFilter(RowFilter.regexFilter(p));
-                            searchField.setBackground(Color.WHITE);
-                        } catch (Exception ex) { searchField.setBackground(Color.PINK); }
-                    }
+            Runnable updateFilter = () -> {
+                List<RowFilter<Object, Object>> filters = new ArrayList<>();
+                String text = searchField.getText();
+                if (!text.isEmpty()) {
+                    try {
+                        String p = regexMode.isSelected() ? "(?i)" + text : "(?i)" + Pattern.quote(text);
+                        filters.add(RowFilter.regexFilter(p));
+                        searchField.setBackground(Color.WHITE);
+                    } catch (Exception ex) { searchField.setBackground(Color.PINK); }
                 }
+                String selectedMime = (String) mimeFilter.getSelectedItem();
+                if (selectedMime != null && !selectedMime.startsWith("All")) {
+                    filters.add(RowFilter.regexFilter(selectedMime, 4));
+                }
+                if (filters.isEmpty()) sorter.setRowFilter(null);
+                else sorter.setRowFilter(RowFilter.andFilter(filters));
             };
-            searchField.addKeyListener(filterListener);
-            regexMode.addActionListener(e -> filterListener.keyReleased(null));
+            searchField.addKeyListener(new KeyAdapter() { public void keyReleased(KeyEvent e) { updateFilter.run(); }});
+            regexMode.addActionListener(e -> updateFilter.run());
+            mimeFilter.addActionListener(e -> updateFilter.run());
 
-            // 梳理台右键菜单 (保留快捷键提示)
+            // 右键菜单 (双语 + 快捷键提示)
             JPopupMenu popup = new JPopupMenu();
-            JMenuItem feedItem = new JMenuItem("Batch -> Feed Proxy [" + BurpExtender.KEY_FEED + "]");
+            
+            String kFeed = BurpExtender.KEY_FEED == null ? "" : " [" + BurpExtender.KEY_FEED + "]";
+            JMenuItem feedItem = new JMenuItem("Batch -> Feed Proxy (投喂代理)" + kFeed);
             feedItem.addActionListener(e -> doFeedProxy());
-            JMenuItem repItem = new JMenuItem("Batch -> Repeater [" + BurpExtender.KEY_REPEATER + "]");
+
+            String kRep = BurpExtender.KEY_REPEATER == null ? "" : " [" + BurpExtender.KEY_REPEATER + "]";
+            JMenuItem repItem = new JMenuItem("Batch -> Repeater (批量重放)" + kRep);
             repItem.addActionListener(e -> doBatchRepeater());
-            JMenuItem intItem = new JMenuItem("Batch -> Intruder [" + BurpExtender.KEY_INTRUDER + "]");
+
+            String kInt = BurpExtender.KEY_INTRUDER == null ? "" : " [" + BurpExtender.KEY_INTRUDER + "]";
+            JMenuItem intItem = new JMenuItem("Batch -> Intruder (批量入侵)" + kInt);
             intItem.addActionListener(e -> doBatchIntruder());
-            JMenuItem copyLite = new JMenuItem("Copy Lite [" + BurpExtender.KEY_COPY_LITE + "]");
+
+            String kLite = BurpExtender.KEY_COPY_LITE == null ? "" : " [" + BurpExtender.KEY_COPY_LITE + "]";
+            JMenuItem copyLite = new JMenuItem("Copy Lite (AI复制-精简)" + kLite);
             copyLite.addActionListener(e -> doCopy(false));
-            JMenuItem copyFull = new JMenuItem("Copy Full [" + BurpExtender.KEY_COPY_FULL + "]");
+
+            String kFull = BurpExtender.KEY_COPY_FULL == null ? "" : " [" + BurpExtender.KEY_COPY_FULL + "]";
+            JMenuItem copyFull = new JMenuItem("Copy Full (AI复制-完整)" + kFull);
             copyFull.addActionListener(e -> doCopy(true));
-            JMenuItem delItem = new JMenuItem("Delete Row [" + BurpExtender.KEY_DELETE + "]");
+            
+            String kDel = BurpExtender.KEY_DELETE == null ? "" : " [" + BurpExtender.KEY_DELETE + "]";
+            JMenuItem delItem = new JMenuItem("Delete Row (删除行)" + kDel);
             delItem.addActionListener(e -> doDelete());
 
             popup.add(feedItem); popup.addSeparator();
@@ -354,68 +344,38 @@ public class BurpExtender implements BurpExtension {
             add(topPanel, BorderLayout.NORTH);
             add(new JScrollPane(table), BorderLayout.CENTER);
             
-            // 底部面板：状态栏 + 统计
-            JPanel bottomPanel = new JPanel(new BorderLayout());
-            JLabel helpLabel = new JLabel("  [Keys] q:Feed | w:Rep | e:Int | c:Lite | C:Full | d:Clear | f:Del");
-            helpLabel.setForeground(Color.GRAY);
-            
-            countLabel = new JLabel("Total: 0 requests  ");
-            countLabel.setFont(countLabel.getFont().deriveFont(Font.BOLD));
-
-            bottomPanel.add(helpLabel, BorderLayout.WEST);
-            bottomPanel.add(countLabel, BorderLayout.EAST);
-            add(bottomPanel, BorderLayout.SOUTH);
+            // 底部统计
+            statusLabel = new JLabel(" Ready.");
+            statusLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+            statusLabel.setFont(new Font("Monospaced", Font.PLAIN, 12));
+            add(statusLabel, BorderLayout.SOUTH);
         }
 
-        // --- 动作逻辑 ---
-        
-        // 核心：自动去重
         private void deduplicate() {
             if (entries.isEmpty()) return;
             Set<String> uniqueKeys = new HashSet<>();
             List<ApiEntry> uniqueEntries = new ArrayList<>();
             int removedCount = 0;
-
             for (ApiEntry entry : entries) {
-                // 唯一标识：Host + Method + Path + Params
-                String key = entry.host + "|" + entry.method + "|" + entry.path + "|" + entry.params;
-                if (!uniqueKeys.contains(key)) {
-                    uniqueKeys.add(key);
-                    uniqueEntries.add(entry);
-                } else {
-                    removedCount++;
-                }
+                String key = entry.host + "|" + entry.method + "|" + entry.path + "|" + entry.params + "|" + entry.mime;
+                if (!uniqueKeys.contains(key)) { uniqueKeys.add(key); uniqueEntries.add(entry); } 
+                else { removedCount++; }
             }
-            
             if (removedCount > 0) {
                 entries.clear();
+                for (int i = 0; i < uniqueEntries.size(); i++) uniqueEntries.get(i).id = i + 1;
                 entries.addAll(uniqueEntries);
                 refreshTable();
-                JOptionPane.showMessageDialog(this, "Deduplication Complete.\nRemoved " + removedCount + " duplicates.");
-            } else {
-                JOptionPane.showMessageDialog(this, "No duplicates found.");
-            }
+                JOptionPane.showMessageDialog(this, "Removed " + removedCount + " duplicates.");
+            } else { JOptionPane.showMessageDialog(this, "No duplicates."); }
         }
 
-        private void doBatchRepeater() {
-            for(int r : table.getSelectedRows()) {
-                ApiEntry en = entries.get(table.convertRowIndexToModel(r));
-                String name = en.tag.isEmpty() ? en.method + " " + shortPath(en.path) : en.tag;
-                api.repeater().sendToRepeater(en.requestResponse.request(), name);
-            }
-        }
-        private void doBatchIntruder() {
-            for(int r : table.getSelectedRows()) {
-                ApiEntry en = entries.get(table.convertRowIndexToModel(r));
-                api.intruder().sendToIntruder(en.requestResponse.request());
-            }
-        }
+        private void doBatchRepeater() { for(int r : table.getSelectedRows()) { ApiEntry en = entries.get(table.convertRowIndexToModel(r)); api.repeater().sendToRepeater(en.requestResponse.request(), en.tag.isEmpty() ? en.path : en.tag); } }
+        private void doBatchIntruder() { for(int r : table.getSelectedRows()) { ApiEntry en = entries.get(table.convertRowIndexToModel(r)); api.intruder().sendToIntruder(en.requestResponse.request()); } }
         private void doFeedProxy() {
             if(!BurpExtender.PROXY_ENABLE) { JOptionPane.showMessageDialog(this, "Proxy Disabled"); return; }
             int[] rows = table.getSelectedRows();
-            executor.submit(() -> {
-               for(int r : rows) sendToProxy(entries.get(table.convertRowIndexToModel(r)).requestResponse.request());
-            });
+            executor.submit(() -> { for(int r : rows) sendToProxy(entries.get(table.convertRowIndexToModel(r)).requestResponse.request()); });
         }
         private void doCopy(boolean full) {
             List<HttpRequestResponse> list = new ArrayList<>();
@@ -430,10 +390,7 @@ public class BurpExtender implements BurpExtension {
             for(int i : idx) entries.remove((int)i); 
             refreshTable();
         }
-        private void doClear() {
-            for (int r : table.getSelectedRows()) entries.get(table.convertRowIndexToModel(r)).tag = "";
-            refreshTable();
-        }
+        private void doClear() { for (int r : table.getSelectedRows()) entries.get(table.convertRowIndexToModel(r)).tag = ""; refreshTable(); }
         private void doTag(String tagText) {
             for (int r : table.getSelectedRows()) {
                 ApiEntry en = entries.get(table.convertRowIndexToModel(r));
@@ -442,32 +399,40 @@ public class BurpExtender implements BurpExtension {
             refreshTable();
         }
 
-        public void refreshTable() { 
-            tableModel.fireTableDataChanged(); 
-            // 更新统计数据
-            countLabel.setText("Total: " + entries.size() + " requests  ");
+        public void refreshTable() { tableModel.fireTableDataChanged(); updateStats(); }
+
+        private void updateStats() {
+            if (entries.isEmpty()) { statusLabel.setText(" No data."); return; }
+            try {
+                long total = entries.size();
+                Map<String, Long> counts = entries.stream()
+                    .collect(Collectors.groupingBy(e -> e.mime == null ? "UNKNOWN" : e.mime, Collectors.counting()));
+                StringBuilder sb = new StringBuilder();
+                sb.append(" 📊 Total: ").append(total).append("  |  ");
+                String[] priority = {"JSON", "HTML", "SCRIPT", "XML", "IMAGE"};
+                for (String key : priority) {
+                    if (counts.containsKey(key)) { sb.append(key).append(": ").append(counts.get(key)).append("  "); counts.remove(key); }
+                }
+                long other = counts.values().stream().mapToLong(Long::longValue).sum();
+                if (other > 0) sb.append("Other: ").append(other);
+                statusLabel.setText(sb.toString());
+            } catch (Exception e) { statusLabel.setText(" Stats Error"); }
         }
         
         class ApiTableModel extends AbstractTableModel {
-            String[] cols = {"ID", "Host", "Method", "URL", "Tag (Edit)", "Params"};
+            String[] cols = {"ID", "Host (主机)", "Method (方法)", "URL (路径)", "MIME (类型)", "Tag (标签/编辑)", "Params (参数)"};
             public int getRowCount() { return entries.size(); }
             public int getColumnCount() { return cols.length; }
             public String getColumnName(int c) { return cols[c]; }
-            public boolean isCellEditable(int r, int c) { return c == 4; } // Tag is 4th col
+            public boolean isCellEditable(int r, int c) { return c == 5; }
             public Object getValueAt(int r, int c) {
                 ApiEntry e = entries.get(r);
                 switch(c) {
-                    case 0: return e.id; 
-                    case 1: return e.host; 
-                    case 2: return e.method; 
-                    case 3: return e.path; 
-                    case 4: return e.tag; 
-                    case 5: return e.params; 
-                    default: return "";
+                    case 0: return e.id; case 1: return e.host; case 2: return e.method; case 3: return e.path; case 4: return e.mime; case 5: return e.tag; case 6: return e.params; default: return "";
                 }
             }
             public void setValueAt(Object val, int r, int c) {
-                if (c == 4) { entries.get(r).tag = (String) val; fireTableCellUpdated(r, c); }
+                if (c == 5) { entries.get(r).tag = (String) val; fireTableCellUpdated(r, c); }
             }
         }
     }
@@ -477,99 +442,83 @@ public class BurpExtender implements BurpExtension {
     // ========================================================================
     class ConfigTab extends JPanel {
         private final DefaultTableModel model;
-
         public ConfigTab() {
             setLayout(new BorderLayout());
             setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
-
             JPanel top = new JPanel();
             top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 
-            // 1. Shortcuts
+            // Shortcuts
             JPanel shortcuts = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            shortcuts.setBorder(BorderFactory.createTitledBorder("Shortcut Customization (QWER Layout)"));
-            shortcuts.add(new JLabel("Feed(q):")); shortcuts.add(createKeyField(BurpExtender.KEY_FEED, k->BurpExtender.KEY_FEED=k));
-            shortcuts.add(new JLabel("Rep(w):")); shortcuts.add(createKeyField(BurpExtender.KEY_REPEATER, k->BurpExtender.KEY_REPEATER=k));
-            shortcuts.add(new JLabel("Intr(e):")); shortcuts.add(createKeyField(BurpExtender.KEY_INTRUDER, k->BurpExtender.KEY_INTRUDER=k));
-            shortcuts.add(new JLabel("Lite(c):")); shortcuts.add(createKeyField(BurpExtender.KEY_COPY_LITE, k->BurpExtender.KEY_COPY_LITE=k));
-            shortcuts.add(new JLabel("Full(C):")); shortcuts.add(createKeyField(BurpExtender.KEY_COPY_FULL, k->BurpExtender.KEY_COPY_FULL=k));
-            shortcuts.add(new JLabel("Clear(d):")); shortcuts.add(createKeyField(BurpExtender.KEY_CLEAR, k->BurpExtender.KEY_CLEAR=k));
-            shortcuts.add(new JLabel("Del(f):")); shortcuts.add(createKeyField(BurpExtender.KEY_DELETE, k->BurpExtender.KEY_DELETE=k));
+            shortcuts.setBorder(BorderFactory.createTitledBorder("Shortcut Customization (自定义快捷键 - 可留空禁用)"));
+            
+            JCheckBox enableKeys = new JCheckBox("Enable Shortcuts (开启快捷键)");
+            enableKeys.setSelected(BurpExtender.ENABLE_SHORTCUTS);
+            enableKeys.addActionListener(e -> BurpExtender.ENABLE_SHORTCUTS = enableKeys.isSelected());
+            shortcuts.add(enableKeys);
+            shortcuts.add(Box.createHorizontalStrut(10));
 
-            // 2. General
+            shortcuts.add(new JLabel("Feed(投喂) [q]:")); shortcuts.add(createKeyField(BurpExtender.KEY_FEED, k->BurpExtender.KEY_FEED=k));
+            shortcuts.add(new JLabel("Rep(重放) [w]:")); shortcuts.add(createKeyField(BurpExtender.KEY_REPEATER, k->BurpExtender.KEY_REPEATER=k));
+            shortcuts.add(new JLabel("Intr(入侵) [e]:")); shortcuts.add(createKeyField(BurpExtender.KEY_INTRUDER, k->BurpExtender.KEY_INTRUDER=k));
+            shortcuts.add(new JLabel("Lite(精简) [c]:")); shortcuts.add(createKeyField(BurpExtender.KEY_COPY_LITE, k->BurpExtender.KEY_COPY_LITE=k));
+            shortcuts.add(new JLabel("Full(完整) [C]:")); shortcuts.add(createKeyField(BurpExtender.KEY_COPY_FULL, k->BurpExtender.KEY_COPY_FULL=k));
+            shortcuts.add(new JLabel("Clear(清空) [d]:")); shortcuts.add(createKeyField(BurpExtender.KEY_CLEAR, k->BurpExtender.KEY_CLEAR=k));
+            shortcuts.add(new JLabel("Del(删除) [f]:")); shortcuts.add(createKeyField(BurpExtender.KEY_DELETE, k->BurpExtender.KEY_DELETE=k));
+
+            // General
             JPanel basic = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            basic.setBorder(BorderFactory.createTitledBorder("General"));
-            JCheckBox autoParam = new JCheckBox("Auto Extract Params");
+            basic.setBorder(BorderFactory.createTitledBorder("General (常规设置)"));
+            JCheckBox autoParam = new JCheckBox("Auto Extract Params (自动提取参数)");
             autoParam.setSelected(BurpExtender.AUTO_EXTRACT_PARAMS);
             autoParam.addActionListener(e -> BurpExtender.AUTO_EXTRACT_PARAMS = autoParam.isSelected());
             basic.add(autoParam);
 
-            // 3. Proxy
+            // Proxy
             JPanel proxy = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            proxy.setBorder(BorderFactory.createTitledBorder("Passive Proxy"));
-            JCheckBox pEnable = new JCheckBox("Enable");
+            proxy.setBorder(BorderFactory.createTitledBorder("Passive Proxy (扫描器联动设置)"));
+            JCheckBox pEnable = new JCheckBox("Enable (开启)");
             pEnable.setSelected(BurpExtender.PROXY_ENABLE);
             pEnable.addActionListener(e -> BurpExtender.PROXY_ENABLE = pEnable.isSelected());
-            
             JTextField pHost = new JTextField(BurpExtender.PROXY_HOST, 10);
             pHost.addKeyListener(new KeyAdapter() { public void keyReleased(KeyEvent e) { BurpExtender.PROXY_HOST = pHost.getText().trim(); }});
             JTextField pPort = new JTextField(String.valueOf(BurpExtender.PROXY_PORT), 5);
             pPort.addKeyListener(new KeyAdapter() { public void keyReleased(KeyEvent e) { try{BurpExtender.PROXY_PORT = Integer.parseInt(pPort.getText().trim());}catch(Exception x){} }});
             JComboBox<String> pType = new JComboBox<>(new String[]{"HTTP", "SOCKS"});
             pType.addActionListener(e -> BurpExtender.PROXY_TYPE = "SOCKS".equals(pType.getSelectedItem()) ? Proxy.Type.SOCKS : Proxy.Type.HTTP);
-
             proxy.add(pEnable); proxy.add(new JLabel("Host:")); proxy.add(pHost); proxy.add(new JLabel("Port:")); proxy.add(pPort); proxy.add(pType);
 
-            top.add(shortcuts);
-            top.add(basic);
-            top.add(proxy);
+            top.add(shortcuts); top.add(basic); top.add(proxy);
             add(top, BorderLayout.NORTH);
 
-            // 4. Tag Table
-            String[] headers = {"Key (Char)", "Tag Content"};
+            // Tags
+            String[] headers = {"Key (按键)", "Tag Content (标签内容)"};
             model = new DefaultTableModel(headers, 0);
             JTable table = new JTable(model);
             refreshTable();
             add(new JScrollPane(table), BorderLayout.CENTER);
 
             JPanel btns = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            JButton addBtn = new JButton("Add Tag");
-            addBtn.addActionListener(e -> model.addRow(new Object[]{"", "[Tag] "}));
-            JButton delBtn = new JButton("Delete Tag");
-            delBtn.addActionListener(e -> {
-                int[] rows = table.getSelectedRows();
-                for(int i=rows.length-1; i>=0; i--) model.removeRow(rows[i]);
-                saveMap();
-            });
-            JButton saveBtn = new JButton("Apply Config");
-            saveBtn.setFont(saveBtn.getFont().deriveFont(Font.BOLD));
-            saveBtn.addActionListener(e -> { saveMap(); JOptionPane.showMessageDialog(this, "Config Applied!"); });
-
+            JButton addBtn = new JButton("Add Tag (添加)"); addBtn.addActionListener(e -> model.addRow(new Object[]{"", "[Tag] "}));
+            JButton delBtn = new JButton("Delete Tag (删除)"); delBtn.addActionListener(e -> { int[] rows = table.getSelectedRows(); for(int i=rows.length-1; i>=0; i--) model.removeRow(rows[i]); saveMap(); });
+            JButton saveBtn = new JButton("Apply Config (保存配置)"); saveBtn.setFont(saveBtn.getFont().deriveFont(Font.BOLD)); saveBtn.addActionListener(e -> { saveMap(); JOptionPane.showMessageDialog(this, "Config Applied!"); });
             btns.add(addBtn); btns.add(delBtn); btns.add(saveBtn);
             add(btns, BorderLayout.SOUTH);
         }
 
-        private JTextField createKeyField(char initial, java.util.function.Consumer<Character> setter) {
-            JTextField tf = new JTextField(String.valueOf(initial), 2);
+        private JTextField createKeyField(Character initial, java.util.function.Consumer<Character> setter) {
+            String val = initial == null ? "" : String.valueOf(initial);
+            JTextField tf = new JTextField(val, 2);
             tf.addKeyListener(new KeyAdapter() {
-                public void keyReleased(KeyEvent e) { if(!tf.getText().isEmpty()) setter.accept(tf.getText().charAt(0)); }
+                public void keyReleased(KeyEvent e) { 
+                    String text = tf.getText();
+                    if(text.isEmpty()) { setter.accept(null); } else { setter.accept(text.charAt(0)); }
+                }
             });
             return tf;
         }
-
-        void refreshTable() {
-            model.setRowCount(0);
-            BurpExtender.TAG_MAP.forEach((k,v) -> model.addRow(new Object[]{k+"", v}));
-        }
-
-        void saveMap() {
-            BurpExtender.TAG_MAP.clear();
-            for(int i=0; i<model.getRowCount(); i++) {
-                String k = (String)model.getValueAt(i,0);
-                String v = (String)model.getValueAt(i,1);
-                if(k!=null && !k.isEmpty()) BurpExtender.TAG_MAP.put(k.toLowerCase().charAt(0), v);
-            }
-        }
+        void refreshTable() { model.setRowCount(0); BurpExtender.TAG_MAP.forEach((k,v) -> model.addRow(new Object[]{k+"", v})); }
+        void saveMap() { BurpExtender.TAG_MAP.clear(); for(int i=0; i<model.getRowCount(); i++) { String k = (String)model.getValueAt(i,0); String v = (String)model.getValueAt(i,1); if(k!=null && !k.isEmpty()) BurpExtender.TAG_MAP.put(k.toLowerCase().charAt(0), v); } }
     }
 
     class HelpTab extends JPanel {
@@ -579,29 +528,36 @@ public class BurpExtender implements BurpExtension {
             ep.setContentType("text/html");
             ep.setEditable(false);
             ep.setText("<html><body style='font-family:sans-serif;padding:15px;'>" +
-                    "<h1>Entropy Manager (Strategic Edition)</h1>" +
-                    "<h3>Workspace:</h3>" +
-                    "<ul><li><b>Host Column:</b> Identify assets clearly.</li>" +
-                    "<li><b>Deduplicate:</b> Remove identical requests (Host+Method+URL+Params).</li>" +
-                    "<li><b>Counter:</b> Real-time request count at bottom.</li></ul>" +
-                    "<h3>Shortcuts (Workspace Only):</h3>" +
+                    "<h1>Entropy Manager (Bilingual)</h1>" +
+                    "<h3>Workspace (梳理台):</h3>" +
                     "<ul>" +
-                    "<li><b>q</b>: Feed to Proxy | <b>w</b>: Repeater | <b>e</b>: Intruder</li>" +
-                    "<li><b>c</b>: Copy Lite | <b>C</b>: Copy Full</li>" +
-                    "<li><b>d</b>: Clear Tag | <b>f</b>: Delete Row</li>" +
+                    "<li><b>Dashboard (数据大屏):</b> Real-time stats by MIME type at the bottom.<br>底部实时显示各类型数据包数量 (JSON, HTML...)。</li>" +
+                    "<li><b>Deduplicate (去重):</b> Remove identical requests (Host+Method+URL+Params).<br>一键去除重复请求。</li>" +
                     "</ul>" +
+                    "<h3>Shortcuts (梳理台快捷键):</h3>" +
+                    "<ul>" +
+                    "<li><b>q</b>: Feed Proxy (投喂) | <b>w</b>: Repeater (重放) | <b>e</b>: Intruder (入侵)</li>" +
+                    "<li><b>c</b>: Copy Lite (精简) | <b>C</b>: Copy Full (完整)</li>" +
+                    "<li><b>d</b>: Clear Tag (清空) | <b>f</b>: Delete Row (删除)</li>" +
+                    "<li><b>1-7</b>: Quick Tags (快速打标)</li>" +
+                    "</ul>" +
+                    "<p><i>* Keys are customizable & nullable in Config. (按键可在配置页修改或留空禁用)</i></p>" +
                     "</body></html>");
             add(new JScrollPane(ep));
         }
     }
 
     static class ApiEntry {
-        int id; HttpRequestResponse requestResponse; String host, method, path, tag="", params;
+        int id; HttpRequestResponse requestResponse; String host, method, path, tag="", params, mime="UNKNOWN";
         ApiEntry(int id, HttpRequestResponse rr) {
             this.id=id; this.requestResponse = rr; HttpRequest req = rr.request();
-            this.host=req.httpService().host(); // 获取 Host
+            this.host=req.httpService().host();
             this.method=req.method(); this.path=req.path();
             this.params = BurpExtender.AUTO_EXTRACT_PARAMS ? extract(req) : "";
+            if (rr.response() != null) {
+                MimeType mt = rr.response().inferredMimeType();
+                if (mt != null) this.mime = mt.name();
+            }
         }
     }
 

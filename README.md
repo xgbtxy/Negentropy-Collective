@@ -26,7 +26,7 @@ Entropy reduction at the physical layer. We don't reinvent the wheel; we make it
 
 | Project                                                      | Description                                                  | Status   |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | -------- |
-| [**Entropy**](https://github.com/xgbtxy/Negentropy-Collective/tree/main/Tools/Entropy) | **Traffic Negentropy.** Burp plugin providing Workspace, Custom Shortcuts, and Passive Proxy Linkage. (Formerly *Burp-Negentropy-Extension*) | ✅ Stable |
+| [**Entropy**]([https://www.google.com/search?q=./Tools/Entropy](https://github.com/xgbtxy/Negentropy-Collective/tree/main/Tools/Entropy)) | **Traffic Negentropy.** Burp plugin providing Workspace, Custom Shortcuts, and Passive Proxy Linkage. (Formerly *Burp-Negentropy-Extension*) | ✅ Stable |
 | **Auto-Recon-Scripts**                                       | *Coming Soon...* Automated asset reconnaissance script collection. | 🚧 Dev    |
 
 ### 🧠 Pillar II: Methodology (Gnosis)
@@ -50,7 +50,7 @@ Code born from "impromptu ideas" in actual combat, becoming the key to solving p
 
 | Tool / Script                                                | Pain Point Solved                                            | Lang |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
-| [**Entropy**](https://github.com/xgbtxy/Negentropy-Collective/tree/main/Tools/Entropy) | Solves Burp batch interaction gaps, token waste during AI analysis, and allows keyboard-driven tagging. | Java |
+| [**Entropy**]([https://www.google.com/search?q=./Tools/Entropy](https://github.com/xgbtxy/Negentropy-Collective/tree/main/Tools/Entropy)) | Solves Burp batch interaction gaps, token waste during AI analysis, and allows keyboard-driven tagging. | Java |
 | [**Example-Script**](https://www.google.com/search?q=./Scripts/Example) | Hard-coded decryption script for a specific OA system version. | Py   |
 
 #### 💎 Hidden Gems

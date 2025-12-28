@@ -81,7 +81,7 @@ If you want to build from source:
 
 ```bash
 # Clone the repository
-git clone [https://github.com/xgbtxy/Negentropy-Collective.git](https://github.com/xgbtxy/Negentropy-Collective.git)
+git clone https://github.com/xgbtxy/Negentropy-Collective.git
 
 # Navigate to the tool directory
 cd Negentropy-Collective/Tools/Entropy

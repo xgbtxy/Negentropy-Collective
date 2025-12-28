@@ -4,7 +4,7 @@
 >
 > "We embrace the High Entropy of the cyber world, and distill it into Order."
 
-[🇨🇳 中文宣言 (Chinese Version)](https://www.google.com/search?q=README_CN.md)
+[🇨🇳 中文宣言 (Chinese Version)](https://github.com/xgbtxy/Negentropy-Collective/blob/main/README_CN.md)
 
 ## 📖 Manifesto
 
